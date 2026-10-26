@@ -9,7 +9,14 @@
 ###################################################################################################
 
 cmake_minimum_required (VERSION 3.20)
-project(OrbisAFR_PS5 CXX)
+# C *and* CXX: onionHEN-plugin-sdk's own CMakeLists.txt (pulled in below via
+# add_subdirectory) declares "LANGUAGES C" itself, but enabling C only
+# through that nested project() call -- instead of here, in the first
+# project() CMake processes -- leaves target_compile_features(c_std_11)
+# unable to find the C compiler's feature table at all (reproduced outside
+# the PS5 toolchain too: plain host gcc hits the same "no known features
+# for C compiler \"\"" error). Declaring both here avoids it.
+project(OrbisAFR_PS5 C CXX)
 
 # Path to a checkout of https://github.com/OnionBuddies/onionHEN-plugin-sdk
 if (NOT DEFINED ONION_PLUGIN_SDK)

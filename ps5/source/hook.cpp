@@ -27,7 +27,9 @@ struct Trampoline {
 	uint8_t hook_body[AFR_OPEN_HOOK_SIZE];
 };
 
-constexpr Trampoline makeTrampoline() {
+// Not constexpr: it copies from afr_open_hook_code, a plain `static const`
+// array (not itself constexpr), so this can only ever run at runtime.
+Trampoline makeTrampoline() {
 	Trampoline t{};
 	t.prefix[0] = 0x48;
 	t.prefix[1] = 0xb9; // mov rcx, imm64

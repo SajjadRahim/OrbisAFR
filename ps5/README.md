@@ -152,9 +152,13 @@ python3 shellcode/generate_bytes.py
 1. Copy the built plugin (`build/bin/OrbisAFR_PS5.elf`) to
    `/data/OnionHEN/plugins/` on your jailbroken PS5, the same way any other
    OnionHEN plugin is installed.
-2. Create `/data/afr/<TITLEID>/` and put your replacement files in it, at
+2. (Optional) To have it start automatically instead of starting it by hand
+   from the OnionHEN UI every boot, create an empty marker file next to it:
+   `/data/OnionHEN/plugins/OrbisAFR_PS5.elf.auto_start`. OnionHEN checks for
+   this file's presence, not a flag baked into the plugin itself.
+3. Create `/data/afr/<TITLEID>/` and put your replacement files in it, at
    the same relative path the game itself uses (see the pak example above).
-3. Launch the game. Check `/data/afr/afr_plugin.log` if the redirect
+4. Launch the game. Check `/data/afr/afr_plugin.log` if the redirect
    doesn't seem to be taking effect.
 
 ## Known limitations / what still needs verifying on real hardware

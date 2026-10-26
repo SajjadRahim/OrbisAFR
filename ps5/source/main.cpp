@@ -42,9 +42,17 @@
 // Lets OnionHEN's plugin manager discover and validate this ELF (the
 // ".onion_plugin" ELF section onion_add_plugin's post-build step checks
 // for). It does not open an IPC session with the host -- see note above.
+//
+// No ONION_PLUGIN_FLAG_AUTO_START here: OnionHEN's real plugin manager
+// (onion::plugin::kKnownFlags, in onionHEN's own plugin_manager.hpp) only
+// recognizes LONG_RUNNING and STOP_SUPPORTED -- AUTO_START isn't in that
+// set, so a descriptor carrying it gets rejected outright during discovery
+// ("plugin descriptor contains unknown flags"), before the file is even
+// added to the plugin list. OnionHEN controls auto-start via a sibling
+// "<plugin>.elf.auto_start" marker file instead (see ps5/README.md).
 ONION_PLUGIN_DEFINE("AFRP00001", "0.10", "OrbisAFR",
                     ONION_PLUGIN_CAP_PROCESS | ONION_PLUGIN_CAP_INJECT | ONION_PLUGIN_CAP_KERNEL,
-                    ONION_PLUGIN_FLAG_AUTO_START | ONION_PLUGIN_FLAG_LONG_RUNNING);
+                    ONION_PLUGIN_FLAG_LONG_RUNNING | ONION_PLUGIN_FLAG_STOP_SUPPORTED);
 
 extern "C" {
 	int sceSystemServiceGetAppIdOfRunningBigApp();

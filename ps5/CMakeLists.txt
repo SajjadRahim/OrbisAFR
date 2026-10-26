@@ -56,7 +56,7 @@ onion_add_plugin(
 	VERSION 0.1.0
 	SOURCES ${SrcFiles}
 	INCLUDE_DIRS "${ETAHEN_PLUGINS_SDK}/include"
-	LIBRARIES hijacker SceSystemService SceUserService SceSysCore
+	LIBRARIES hijacker kernel_sys SceSystemService SceUserService SceSysCore
 	COMPILE_OPTIONS -std=c++20 -Wno-error)
 
 target_link_directories(OrbisAFR_PS5 PRIVATE "${ETAHEN_PLUGINS_SDK}/lib")

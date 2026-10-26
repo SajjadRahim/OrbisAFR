@@ -53,7 +53,7 @@ file(GLOB SrcFiles ${D_SRC}/*.cpp)
 onion_add_plugin(
 	NAME OrbisAFR_PS5
 	TITLE_ID AFRP00001
-	VERSION 0.1.0
+	VERSION 0.10
 	SOURCES ${SrcFiles}
 	INCLUDE_DIRS "${ETAHEN_PLUGINS_SDK}/include"
 	LIBRARIES hijacker kernel_sys SceSystemService SceUserService SceSysCore

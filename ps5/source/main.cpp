@@ -42,7 +42,7 @@
 // Lets OnionHEN's plugin manager discover and validate this ELF (the
 // ".onion_plugin" ELF section onion_add_plugin's post-build step checks
 // for). It does not open an IPC session with the host -- see note above.
-ONION_PLUGIN_DEFINE("AFRP00001", "0.1.0", "OrbisAFR",
+ONION_PLUGIN_DEFINE("AFRP00001", "0.10", "OrbisAFR",
                     ONION_PLUGIN_CAP_PROCESS | ONION_PLUGIN_CAP_INJECT | ONION_PLUGIN_CAP_KERNEL,
                     ONION_PLUGIN_FLAG_AUTO_START | ONION_PLUGIN_FLAG_LONG_RUNNING);
 

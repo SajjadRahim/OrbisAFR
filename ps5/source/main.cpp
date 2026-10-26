@@ -28,6 +28,7 @@
 #include "hook.hpp"
 #include <hijacker/hijacker.hpp>
 #include <onion/plugin.h>
+#include <ps5/payload.h>
 #include <signal.h>
 #include <cstdio>
 #include <cstdarg>
@@ -120,6 +121,19 @@ uintptr_t kernel_base = 0;
 
 int main() {
 	plugin_log("AFR plugin starting...");
+
+	// libhijacker walks the kernel's process list (getAllProcs(), via
+	// kernel_base + offsets::allproc()) to find a game's KProc by pid --
+	// see Hijacker::getHijacker(int). Without this, kernel_base stays 0 and
+	// every lookup silently fails to match any pid, which is why attach
+	// kept failing (confirmed against etaHEN-Plugins' own samples, e.g.
+	// Game_Plugin_Loader/source/main.cpp, which all set this the same way
+	// before doing anything else).
+	payload_args_t *args = payload_get_args();
+	if (args) {
+		kernel_base = args->kdata_base_addr;
+	}
+	plugin_log("kernel_base = 0x%llx", (unsigned long long)kernel_base);
 
 	struct sigaction act{};
 	act.sa_handler = sig_handler;

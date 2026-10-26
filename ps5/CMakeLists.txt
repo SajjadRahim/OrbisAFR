@@ -33,8 +33,12 @@ if (NOT ETAHEN_PLUGINS_SDK)
 	                     "lib/libhijacker.a and include/ are used)")
 endif()
 
-list(APPEND CMAKE_MODULE_PATH "${ONION_PLUGIN_SDK}/cmake")
-find_package(OnionHENPluginSDK CONFIG REQUIRED)
+# onion_add_plugin() only becomes available this way (via find_package) once
+# the SDK has been `cmake --install`ed somewhere; consuming it straight from
+# a git checkout -- the only thing CI (and most people) will have on hand --
+# means building it the same way its own README builds its samples: as a
+# subdirectory of our own project.
+add_subdirectory("${ONION_PLUGIN_SDK}" onion-plugin-sdk-build)
 
 set(D_SRC "${CMAKE_CURRENT_SOURCE_DIR}/source")
 file(GLOB SrcFiles ${D_SRC}/*.cpp)

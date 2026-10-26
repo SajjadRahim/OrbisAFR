@@ -26,7 +26,7 @@ OrbisAFR doesn't just remplace, but can also add new file in a game !
 
 ## PS5
 
-See [`ps5/`](ps5/) for a port of this idea to PS5, built as an etaHEN
+See [`ps5/`](ps5/) for a port of this idea to PS5, built as an OnionHEN
 plugin (PS5 has no equivalent of the PS4 kernel-level hook this payload
 uses, so the approach is different -- see [`ps5/README.md`](ps5/README.md)
 for why and how).

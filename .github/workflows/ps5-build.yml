@@ -1,0 +1,95 @@
+name: Build PS5 plugin
+
+on:
+  push:
+    paths:
+      - "ps5/**"
+      - ".github/workflows/ps5-build.yml"
+  pull_request:
+    paths:
+      - "ps5/**"
+      - ".github/workflows/ps5-build.yml"
+  workflow_dispatch:
+
+concurrency:
+  group: ps5-build-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # Fast, no-SDK-needed check: open_hook.c must still compile to pure,
+  # relocation-free machine code (it gets injected into a running game as
+  # raw bytes -- see ps5/shellcode/generate_bytes.py). This also catches
+  # open_hook_bytes.h drifting out of sync with open_hook.c.
+  verify-shellcode:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Regenerate open_hook_bytes.h and diff against the committed copy
+        run: |
+          cp ps5/shellcode/open_hook_bytes.h /tmp/open_hook_bytes.h.committed
+          python3 ps5/shellcode/generate_bytes.py
+          if ! diff -q /tmp/open_hook_bytes.h.committed ps5/shellcode/open_hook_bytes.h; then
+            echo "::error::ps5/shellcode/open_hook_bytes.h is out of date with open_hook.c -- run generate_bytes.py and commit the result."
+            diff /tmp/open_hook_bytes.h.committed ps5/shellcode/open_hook_bytes.h || true
+            exit 1
+          fi
+          echo "open_hook_bytes.h matches open_hook.c, and open_hook.c has zero relocations."
+
+  build-plugin:
+    runs-on: ubuntu-latest
+    needs: verify-shellcode
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Get latest ps5-payload-sdk release info
+        id: sdk-release
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const release = await github.rest.repos.getLatestRelease({
+              owner: 'ps5-payload-dev',
+              repo: 'sdk'
+            });
+            core.setOutput('download_url', release.data.assets.find(a => a.name.endsWith('.zip')).browser_download_url);
+
+      - name: Install ps5-payload-sdk
+        run: |
+          curl -L "${{ steps.sdk-release.outputs.download_url }}" -o ps5-sdk.zip
+          mkdir -p "${{ runner.tool_cache }}/ps5-payload-sdk"
+          unzip -q ps5-sdk.zip -d "${{ runner.tool_cache }}/ps5-payload-sdk"
+          echo "PS5_PAYLOAD_SDK=${{ runner.tool_cache }}/ps5-payload-sdk/ps5-payload-sdk" >> "$GITHUB_ENV"
+          chmod -R 0777 "${{ runner.tool_cache }}/ps5-payload-sdk/ps5-payload-sdk"
+
+      - name: Checkout onionHEN-plugin-sdk (plugin descriptor/packaging)
+        uses: actions/checkout@v4
+        with:
+          repository: OnionBuddies/onionHEN-plugin-sdk
+          path: onionHEN-plugin-sdk
+
+      - name: Checkout etaHEN-Plugins (vendored libhijacker.a + headers only)
+        uses: actions/checkout@v4
+        with:
+          repository: etaHEN/etaHEN-Plugins
+          path: etaHEN-Plugins
+
+      - name: Install Ninja
+        run: sudo apt-get update && sudo apt-get install -y ninja-build
+
+      - name: Configure
+        run: |
+          cmake -S ps5 -B ps5/build -G Ninja \
+            -DCMAKE_TOOLCHAIN_FILE="${GITHUB_WORKSPACE}/onionHEN-plugin-sdk/cmake/ps5-toolchain.cmake" \
+            -DPS5_PAYLOAD_SDK="${PS5_PAYLOAD_SDK}" \
+            -DONION_PLUGIN_SDK="${GITHUB_WORKSPACE}/onionHEN-plugin-sdk" \
+            -DETAHEN_PLUGINS_SDK="${GITHUB_WORKSPACE}/etaHEN-Plugins"
+
+      - name: Build
+        run: cmake --build ps5/build
+
+      - name: Upload plugin artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: OrbisAFR_PS5-plugin
+          path: ps5/build/bin/*
+          if-no-files-found: error

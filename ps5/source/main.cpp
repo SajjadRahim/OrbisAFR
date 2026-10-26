@@ -1,13 +1,22 @@
-// OrbisAFR for PS5 -- etaHEN plugin edition
+// OrbisAFR for PS5 -- OnionHEN plugin edition
 //
 // Unlike the original PS4 OrbisAFR, this does NOT patch the kernel's sys_open
 // syscall table. PS5 jailbreaks don't expose a stable, documented kernel
 // hook API the way the PS4 ones used (hardcoded firmware offsets), so this
-// instead attaches to each game's own process (via etaHEN-Plugins' Hijacker)
-// and patches its PLT entry for open()/sceKernelOpen(), the same way the
-// SDK's own Game_Plugin_Loader sample patches scePadReadState(). See
-// ../README.md for the full writeup and ../source/hook.cpp for the patch
-// itself.
+// instead attaches to each game's own process (via libhijacker) and patches
+// its PLT entry for open()/sceKernelOpen(), the same way etaHEN-Plugins' own
+// Game_Plugin_Loader sample patches scePadReadState(). See ../README.md for
+// the full writeup and hook.cpp for the patch itself.
+//
+// Why libhijacker instead of OnionHEN's own plugin SDK for this part:
+// OnionHEN's plugin ABI (include/onion/plugin.h) declares
+// ONION_PLUGIN_CAP_PROCESS/CAP_INJECT/CAP_KERNEL capability bits, but as of
+// this writing its host-side query_interface only implements the UI service
+// (ONION_UI_SERVICE_NAME) -- there's no process-injection service to call
+// into yet. The plugin descriptor below (ONION_PLUGIN_DEFINE) is still what
+// lets OnionHEN discover/validate/start this as a plugin; the actual file
+// hook uses libhijacker directly, the same open-source library OnionHEN
+// itself is built on (see ../README.md).
 //
 // Redirect convention (same spirit as the original OrbisAFR):
 //   a game's own file   -> read normally
@@ -18,8 +27,7 @@
 
 #include "hook.hpp"
 #include <hijacker/hijacker.hpp>
-#include <notify.hpp>
-#include <backtrace.hpp>
+#include <onion/plugin.h>
 #include <signal.h>
 #include <cstdio>
 #include <cstdarg>
@@ -30,6 +38,13 @@
 
 #define AFR_LOG_PATH "/data/afr/afr_plugin.log"
 #define AFR_DATA_ROOT "/data/afr/"
+
+// Lets OnionHEN's plugin manager discover and validate this ELF (the
+// ".onion_plugin" ELF section onion_add_plugin's post-build step checks
+// for). It does not open an IPC session with the host -- see note above.
+ONION_PLUGIN_DEFINE("AFRP00001", "0.1.0", "OrbisAFR",
+                    ONION_PLUGIN_CAP_PROCESS | ONION_PLUGIN_CAP_INJECT | ONION_PLUGIN_CAP_KERNEL,
+                    ONION_PLUGIN_FLAG_AUTO_START | ONION_PLUGIN_FLAG_LONG_RUNNING);
 
 extern "C" {
 	int sceSystemServiceGetAppIdOfRunningBigApp();
@@ -63,8 +78,7 @@ void plugin_log(const char *fmt, ...) {
 }
 
 static void sig_handler(int signo) {
-	printf_notification("AFR plugin crashed with signal %d. Relaunch it from the\netaHEN toolbox if needed.", signo);
-	printBacktraceForCrash();
+	plugin_log("AFR plugin crashed with signal %d", signo);
 }
 
 // Returns the pid of the running foreground app, and its title id, or false
@@ -106,8 +120,6 @@ int main() {
 		sigaction(i, &act, nullptr);
 	}
 
-	printf_notification("OrbisAFR (PS5) started.\nWaiting for a game to launch...");
-
 	std::string last_hooked_title;
 
 	while (true) {
@@ -138,11 +150,10 @@ int main() {
 		std::string redirect_prefix = std::string(AFR_DATA_ROOT) + title_id + "/";
 
 		if (InstallOpenHook(hijacker, redirect_prefix.c_str())) {
-			printf_notification("AFR: redirect active for %s\n(%s)", title_id.c_str(), redirect_prefix.c_str());
+			plugin_log("AFR: redirect active for %s (%s)", title_id.c_str(), redirect_prefix.c_str());
 			last_hooked_title = title_id;
 		} else {
 			plugin_log("InstallOpenHook failed for %s -- will retry on next poll", title_id.c_str());
-			printf_notification("AFR: failed to hook %s, see afr_plugin.log", title_id.c_str());
 			// Don't spin forever retrying a title we can't hook; wait for it
 			// to be replaced by something else before trying again.
 			last_hooked_title = title_id;
